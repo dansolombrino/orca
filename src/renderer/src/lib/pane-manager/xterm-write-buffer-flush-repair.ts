@@ -19,28 +19,31 @@ type WriteBufferInternals = {
   flushSync: () => void
 }
 
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function isWriteBufferInternals(value: unknown): value is WriteBufferInternals {
+  return (
+    isObject(value) &&
+    Array.isArray(value._writeBuffer) &&
+    Array.isArray(value._callbacks) &&
+    typeof value._bufferOffset === 'number' &&
+    typeof value._isSyncWriting === 'boolean' &&
+    typeof value._action === 'function' &&
+    typeof value._innerWrite === 'function' &&
+    typeof value.flushSync === 'function'
+  )
+}
+
 function readWriteBuffer(terminal: unknown): WriteBufferInternals | null {
-  const candidate = (
-    terminal as { _core?: { _writeBuffer?: Partial<WriteBufferInternals> } } | null
-  )?._core?._writeBuffer
-  if (
-    !candidate ||
-    !Array.isArray(candidate._writeBuffer) ||
-    !Array.isArray(candidate._callbacks) ||
-    typeof candidate._bufferOffset !== 'number' ||
-    typeof candidate._isSyncWriting !== 'boolean' ||
-    typeof candidate._action !== 'function' ||
-    typeof candidate._innerWrite !== 'function' ||
-    typeof candidate.flushSync !== 'function'
-  ) {
-    return null
-  }
-  // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: every field the repair touches was shape-checked above.
-  return candidate as WriteBufferInternals
+  const core = isObject(terminal) ? terminal._core : undefined
+  const writeBuffer = isObject(core) ? core._writeBuffer : undefined
+  return isWriteBufferInternals(writeBuffer) ? writeBuffer : null
 }
 
 function isThenable(value: unknown): boolean {
-  return typeof (value as { then?: unknown } | null)?.then === 'function'
+  return isObject(value) && typeof value.then === 'function'
 }
 
 /** Returns false when the vendored xterm no longer has the expected internals. */
