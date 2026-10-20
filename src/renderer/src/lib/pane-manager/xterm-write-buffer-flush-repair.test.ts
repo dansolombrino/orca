@@ -78,6 +78,22 @@ describe('installXtermWriteBufferFlushRepair', () => {
     terminal.dispose()
   })
 
+  it('keeps a write made after a resize from inside a write callback', async () => {
+    const terminal = new Terminal({ cols: 20, rows: 6, allowProposedApi: true })
+    installXtermWriteBufferFlushRepair(terminal)
+    const completed: string[] = []
+    terminal.write('a\r\n', () => {
+      completed.push('a')
+      terminal.resize(19, 6)
+      terminal.write('x\r\n', () => completed.push('x'))
+    })
+    await settle()
+
+    expect(completed).toEqual(['a', 'x'])
+    expect(rows(terminal, 3)).toEqual(['a', 'x', ''])
+    terminal.dispose()
+  })
+
   it('keeps the next unparsed chunk when a resize lands after a slice yields', async () => {
     const terminal = new Terminal({ cols: 20, rows: 6, allowProposedApi: true })
     installXtermWriteBufferFlushRepair(terminal)

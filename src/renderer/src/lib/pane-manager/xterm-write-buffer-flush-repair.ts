@@ -58,19 +58,12 @@ export function installXtermWriteBufferFlushRepair(terminal: unknown): boolean {
   let actionDepth = 0
   let innerWriteDepth = 0
   let parserPausedOnPromise = false
-  // Identifies the chunk _innerWrite last parsed: during its callback _bufferOffset still points at it.
-  let lastParsedBuffer: WriteChunk[] | null = null
-  let lastParsedOffset = -1
 
   writeBuffer._action = (data, promiseResult) => {
-    const offset = writeBuffer._bufferOffset
-    const buffer = writeBuffer._writeBuffer
     actionDepth += 1
     try {
       const result = originalAction(data, promiseResult)
       parserPausedOnPromise = isThenable(result)
-      lastParsedBuffer = parserPausedOnPromise ? null : buffer
-      lastParsedOffset = offset
       return result
     } finally {
       actionDepth -= 1
@@ -89,15 +82,12 @@ export function installXtermWriteBufferFlushRepair(terminal: unknown): boolean {
       originalFlushSync.call(writeBuffer)
       return
     }
-    // Why: flushing inside a parse or across an async handler pause would re-run a partly parsed chunk.
-    if (actionDepth > 0 || parserPausedOnPromise) {
+    // Why: inside a parse, a write callback or an async pause, the active loop still owns the
+    // queue; resetting it here re-runs a chunk or drops writes the callback queues next.
+    if (actionDepth > 0 || innerWriteDepth > 0 || parserPausedOnPromise) {
       return
     }
-    const insideParsedChunkCallback =
-      innerWriteDepth > 0 &&
-      lastParsedBuffer === writeBuffer._writeBuffer &&
-      lastParsedOffset === writeBuffer._bufferOffset
-    const parsedCount = writeBuffer._bufferOffset + (insideParsedChunkCallback ? 1 : 0)
+    const parsedCount = writeBuffer._bufferOffset
     if (parsedCount > 0 && parsedCount <= writeBuffer._writeBuffer.length) {
       writeBuffer._writeBuffer.splice(0, parsedCount)
       writeBuffer._callbacks.splice(0, parsedCount)
