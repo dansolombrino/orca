@@ -77,6 +77,7 @@ export function TerminalPaneSurface({
     managedPanes,
     managerRef,
     menuAgentSessionId,
+    menuClaudeSideChatMode,
     menuPaneHasCustomTitle,
     openDiskSpaceAnalyzer,
     openQuickCommandEditor,
@@ -281,6 +282,10 @@ export function TerminalPaneSurface({
         isNativeChatView={contextMenuIsChatView}
         onToggleNativeChat={handleContextMenuToggleNativeChat}
         onCopyAgentSessionContext={() => void contextMenu.onCopyAgentSessionContext()}
+        claudeSideChatMode={menuClaudeSideChatMode}
+        canAskInClaudeSideChat={contextMenu.menuPaneHasSelection}
+        onToggleClaudeSideChat={contextMenu.onToggleClaudeSideChat}
+        onAskInClaudeSideChat={contextMenu.onAskInClaudeSideChat}
         quickCommandHosts={visibleQuickCommandHosts}
         quickCommandHostLoadFailed={quickCommandHostLoadFailed}
         quickCommandHostOwnershipPending={quickCommandHostOwnershipPending}
